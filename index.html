@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Style Finder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the matrix and indicator, overriding some Tailwind defaults for specific elements */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .question-group {
+            border: 1px solid #e0e0e0;
+            background-color: #ffffff;
+        }
+        .scale label {
+            cursor: pointer;
+            border-radius: 0.5rem; /* Apply rounded corners to labels */
+        }
+        /* Style for the span element that is visible */
+        .scale label span {
+            display: inline-block;
+            padding: 0.5rem 0.75rem; /* Ensure consistent padding */
+            border: 1px solid #d1d5db; /* Default border color */
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out; /* Smooth transition for all changes */
+        }
+        .scale label:hover span {
+            background-color: #f3f4f6; /* Tailwind gray-100 on hover */
+        }
+        /* Highlight for the selected radio button */
+        .scale input[type="radio"]:checked + span {
+            background-color: #bfdbfe; /* Tailwind blue-200 */
+            font-weight: 600;
+            border-color: #3b82f6; /* Tailwind blue-500 for border */
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); /* Blue ring for highlight */
+        }
+        .social-style-matrix {
+            position: relative;
+            width: 100%; /* Make it fluid */
+            max-width: 400px; /* Max width for desktop */
+            aspect-ratio: 1 / 1; /* Keep it square */
+            border: 1px solid #ddd;
+            margin: 0 auto; /* Center the matrix */
+            overflow: visible; /* Changed to visible to ensure labels outside are not clipped */
+            border-radius: 1rem; /* Rounded corners for the matrix */
+        }
+        .quadrant {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333; /* Default text color */
+            padding: 1rem;
+            text-align: center;
+        }
+        /* Specific quadrant colors and text colors */
+        .analytical { background-color: #fef08a; /* Tailwind yellow-200 */ top: 0; left: 0; }
+        .driver { background-color: #fecaca; /* Tailwind red-200 */ top: 0; right: 0; }
+        .amiable { background-color: #a7f3d0; /* Tailwind green-200 */ bottom: 0; left: 0; }
+        .expressive { background-color: #fed7aa; /* Tailwind orange-200 */ bottom: 0; right: 0; }
+
+        .indicator {
+            position: absolute;
+            width: 1.5rem;
+            height: 1.5rem;
+            background-color: #3b82f6; /* Tailwind blue-500 */
+            border-radius: 50%;
+            transform: translate(-50%, -50%); /* Center the dot on the calculated position */
+            pointer-events: none;
+            z-index: 10;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4); /* Blue ring for visibility */
+            transition: left 0.3s ease-out, top 0.3s ease-out; /* Smooth movement */
+        }
+        .axis-label {
+            position: absolute;
+            font-weight: 700;
+            font-size: 1.1em;
+            color: #555;
+            z-index: 5; /* Ensure labels are above quadrants but below indicator */
+        }
+        .axis-label.task { top: -2.5rem; left: 50%; transform: translateX(-50%); }
+        .axis-label.people { bottom: -2.5rem; left: 50%; transform: translateX(-50%); }
+        .axis-label.ask { left: -3rem; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+        .axis-label.tell { right: -3rem; top: 50%; transform: translateY(-50%) rotate(90deg); }
+
+        /* Adjusted styles for letter and number labels outside the matrix */
+        .letter-label {
+            position: absolute;
+            font-weight: 600;
+            font-size: 1em;
+            color: #333;
+            top: -2.5rem; /* Increased distance from top */
+            z-index: 6; /* Ensure it's above quadrants */
+        }
+        .letter-label.a { right: 12.5%; transform: translateX(50%); }
+        .letter-label.b { right: 37.5%; transform: translateX(50%); }
+        .letter-label.c { left: 37.5%; transform: translateX(-50%); }
+        .letter-label.d { left: 12.5%; transform: translateX(-50%); }
+
+        .number-label {
+            position: absolute;
+            font-weight: 600;
+            font-size: 1em;
+            color: #333;
+            left: -2.5rem; /* Increased distance from left */
+            z-index: 6; /* Ensure it's above quadrants */
+        }
+        .number-label.one { top: 12.5%; transform: translateY(-50%); }
+        .number-label.two { top: 37.5%; transform: translateY(-50%); }
+        .number-label.three { bottom: 37.5%; transform: translateY(50%); }
+        .number-label.four { bottom: 12.5%; transform: translateY(50%); }
+
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 640px) {
+            .question-pair {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .scale {
+                margin-top: 0.5rem;
+                width: 100%;
+                justify-content: space-around;
+            }
+            .scale label span {
+                padding: 0.5rem 0.75rem;
+            }
+            .social-style-matrix {
+                width: 90%; /* Adjust width for smaller screens */
+            }
+            .axis-label.task { top: -2rem; }
+            .axis-label.people { bottom: -2rem; }
+            .axis-label.ask { left: -2.5rem; }
+            .axis-label.tell { right: -2.5rem; }
+            .letter-label { top: -1.5rem; font-size: 0.9em; } /* Adjusted for smaller screens */
+            .number-label { left: -1.5rem; font-size: 0.9em; } /* Adjusted for smaller screens */
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 bg-gray-100 min-h-screen flex flex-col items-center">
+
+    <div class="max-w-3xl w-full bg-white p-6 md:p-8 rounded-xl shadow-lg">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Social Style Questionnaire</h1>
+        <p class="text-gray-600 text-center mb-8">
+            To determine your Social Style, note down the number or letter in each of the scales below that best represents how you perceive yourself.
+        </p>
+        <p class="text-lg font-semibold text-gray-700 mb-6">I WOULD BEST DESCRIBE MYSELF AS:</p>
+
+        <div id="questionnaire-container" class="space-y-6">
+            <div class="question-group p-4 rounded-lg shadow-sm">
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">goes along</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q1_verbal" value="A" class="hidden"><span>A</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q1_verbal" value="B" class="hidden"><span>B</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q1_verbal" value="C" class="hidden"><span>C</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q1_verbal" value="D" class="hidden"><span>D</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">takes charge</span>
+                </div>
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">private</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q1_nonverbal" value="1" class="hidden"><span>1</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q1_nonverbal" value="2" class="hidden"><span>2</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q1_nonverbal" value="3" class="hidden"><span>3</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q1_nonverbal" value="4" class="hidden"><span>4</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">warm</span>
+                </div>
+            </div>
+
+            <div class="question-group p-4 rounded-lg shadow-sm">
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">quiet</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q2_verbal" value="A" class="hidden"><span>A</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q2_verbal" value="B" class="hidden"><span>B</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q2_verbal" value="C" class="hidden"><span>C</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q2_verbal" value="D" class="hidden"><span>D</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">talkative</span>
+                </div>
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">calm</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q2_nonverbal" value="1" class="hidden"><span>1</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q2_nonverbal" value="2" class="hidden"><span>2</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q2_nonverbal" value="3" class="hidden"><span>3</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q2_nonverbal" value="4" class="hidden"><span>4</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">excitable</span>
+                </div>
+            </div>
+
+            <div class="question-group p-4 rounded-lg shadow-sm">
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">supportive</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q3_verbal" value="A" class="hidden"><span>A</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q3_verbal" value="B" class="hidden"><span>B</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q3_verbal" value="C" class="hidden"><span>C</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q3_verbal" value="D" class="hidden"><span>D</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">challenging</span>
+                </div>
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">task-oriented</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q3_nonverbal" value="1" class="hidden"><span>1</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q3_nonverbal" value="2" class="hidden"><span>2</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q3_nonverbal" value="3" class="hidden"><span>3</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q3_nonverbal" value="4" class="hidden"><span>4</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">people-oriented</span>
+                </div>
+            </div>
+
+            <div class="question-group p-4 rounded-lg shadow-sm">
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">compliant</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q4_verbal" value="A" class="hidden"><span>A</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q4_verbal" value="B" class="hidden"><span>B</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q4_verbal" value="C" class="hidden"><span>C</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q4_verbal" value="D" class="hidden"><span>D</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">dominant</span>
+                </div>
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">eyes serious</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q4_nonverbal" value="1" class="hidden"><span>1</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q4_nonverbal" value="2" class="hidden"><span>2</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q4_nonverbal" value="3" class="hidden"><span>3</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q4_nonverbal" value="4" class="hidden"><span>4</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">eyes friendly</span>
+                </div>
+            </div>
+
+            <div class="question-group p-4 rounded-lg shadow-sm">
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">asks questions</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q5_verbal" value="A" class="hidden"><span>A</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q5_verbal" value="B" class="hidden"><span>B</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q5_verbal" value="C" class="hidden"><span>C</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q5_verbal" value="D" class="hidden"><span>D</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">makes statements</span>
+                </div>
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">talks only business</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q5_nonverbal" value="1" class="hidden"><span>1</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q5_nonverbal" value="2" class="hidden"><span>2</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q5_nonverbal" value="3" class="hidden"><span>3</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q5_nonverbal" value="4" class="hidden"><span>4</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">shares personal feelings</span>
+                </div>
+            </div>
+
+            <div class="question-group p-4 rounded-lg shadow-sm">
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">cooperative</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q6_verbal" value="A" class="hidden"><span>A</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q6_verbal" value="B" class="hidden"><span>B</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q6_verbal" value="C" class="hidden"><span>C</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q6_verbal" value="D" class="hidden"><span>D</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">competitive</span>
+                </div>
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">reserved</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q6_nonverbal" value="1" class="hidden"><span>1</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q6_nonverbal" value="2" class="hidden"><span>2</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q6_nonverbal" value="3" class="hidden"><span>3</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q6_nonverbal" value="4" class="hidden"><span>4</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">outgoing</span>
+                </div>
+            </div>
+
+            <div class="question-group p-4 rounded-lg shadow-sm">
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">introverted</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q7_verbal" value="A" class="hidden"><span>A</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q7_verbal" value="B" class="hidden"><span>B</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q7_verbal" value="C" class="hidden"><span>C</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q7_verbal" value="D" class="hidden"><span>D</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">extroverted</span>
+                </div>
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">wants or uses facts</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q7_nonverbal" value="1" class="hidden"><span>1</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q7_nonverbal" value="2" class="hidden"><span>2</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q7_nonverbal" value="3" class="hidden"><span>3</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q7_nonverbal" value="4" class="hidden"><span>4</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">wants or uses opinions</span>
+                </div>
+            </div>
+
+            <div class="question-group p-4 rounded-lg shadow-sm">
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">slow, studied</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q8_verbal" value="A" class="hidden"><span>A</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q8_verbal" value="B" class="hidden"><span>B</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q8_verbal" value="C" class="hidden"><span>C</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q8_verbal" value="D" class="hidden"><span>D</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">fast-paced</span>
+                </div>
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">does not express emotion</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q8_nonverbal" value="1" class="hidden"><span>1</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q8_nonverbal" value="2" class="hidden"><span>2</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q8_nonverbal" value="3" class="hidden"><span>3</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q8_nonverbal" value="4" class="hidden"><span>4</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">expresses emotion</span>
+                </div>
+            </div>
+
+            <div class="question-group p-4 rounded-lg shadow-sm">
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">constrained</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q9_verbal" value="A" class="hidden"><span>A</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q9_verbal" value="B" class="hidden"><span>B</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q9_verbal" value="C" class="hidden"><span>C</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q9_verbal" value="D" class="hidden"><span>D</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">open</span>
+                </div>
+                <div class="question-pair flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <span class="text-gray-700 font-medium mb-2 md:mb-0">objective</span>
+                    <div class="scale flex space-x-2">
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q9_nonverbal" value="1" class="hidden"><span>1</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q9_nonverbal" value="2" class="hidden"><span>2</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q9_nonverbal" value="3" class="hidden"><span>3</span></label>
+                        <label class="px-3 py-1 border rounded-md hover:bg-gray-100"><input type="radio" name="q9_nonverbal" value="4" class="hidden"><span>4</span></label>
+                    </div>
+                    <span class="text-gray-700 font-medium mt-2 md:mt-0">personal</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="result-section mt-8 p-6 bg-blue-50 rounded-xl shadow-md">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Your Social Style</h2>
+            <p class="text-gray-700 mb-4 text-center">
+                Total the number of times that each letter and number is circled. The letter and number with the highest totals combine to represent an indication of your Social Style by verbal and non-verbal behaviour.
+            </p>
+            <p class="text-gray-700 mb-6 text-center">
+                Use the Social Style Matrix to plot where your highest letter and highest number intersect. This will show your self-perceived Social Style.
+            </p>
+
+            <div class="score-display text-center mb-6 text-lg">
+                <p class="font-semibold text-gray-800">Highest Letter: <span id="highestLetter" class="text-blue-600">N/A</span></p>
+                <p class="font-semibold text-gray-800">Highest Number: <span id="highestNumber" class="text-blue-600">N/A</span></p>
+                <p class="font-bold text-xl text-blue-700 mt-6">Your Style: <span id="yourStyle">Fill out the questionnaire to see your style!</span></p>
+            </div>
+
+            <div class="social-style-matrix" id="socialStyleMatrix">
+                <div class="axis-label task">TASK</div>
+                <div class="axis-label people">PEOPLE</div>
+                <div class="axis-label ask">ASK</div>
+                <div class="axis-label tell">TELL</div>
+
+                <div class="letter-label a">A</div>
+                <div class="letter-label b">B</div>
+                <div class="letter-label c">C</div>
+                <div class="letter-label d">D</div>
+
+                <div class="number-label one">1</div>
+                <div class="number-label two">2</div>
+                <div class="number-label three">3</div>
+                <div class="number-label four">4</div>
+
+                <div class="quadrant analytical rounded-tl-xl">
+                    Analytical
+                </div>
+                <div class="quadrant driver rounded-tr-xl">
+                    Driver
+                </div>
+                <div class="quadrant amiable rounded-bl-xl">
+                    Amiable
+                </div>
+                <div class="quadrant expressive rounded-br-xl">
+                    Expressive
+                </div>
+                <div id="indicator" class="indicator" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Select all radio buttons within the questionnaire container
+            const allRadioButtons = document.querySelectorAll('#questionnaire-container input[type="radio"]');
+            
+            // Get references to the display elements
+            const highestLetterSpan = document.getElementById('highestLetter');
+            const highestNumberSpan = document.getElementById('highestNumber');
+            const yourStyleSpan = document.getElementById('yourStyle');
+            const indicator = document.getElementById('indicator');
+            const socialStyleMatrix = document.getElementById('socialStyleMatrix');
+
+            /**
+             * Calculates the social style based on selected radio button values.
+             * It counts the occurrences of each letter (A, B, C, D) and number (1, 2, 3, 4)
+             * and determines the highest occurring letter and number.
+             * Finally, it maps these to a social style and updates the UI, including the matrix indicator.
+             */
+            function calculateStyle() {
+                // Initialize counts for letters and numbers
+                const letterCounts = { 'A': 0, 'B': 0, 'C': 0, 'D': 0 };
+                const numberCounts = { '1': 0, '2': 0, '3': 0, '4': 0 };
+
+                // Iterate through all radio buttons to get selected values
+                allRadioButtons.forEach(input => {
+                    if (input.checked) {
+                        const value = input.value;
+                        if (['A', 'B', 'C', 'D'].includes(value)) {
+                            letterCounts[value]++;
+                        } else if (['1', '2', '3', '4'].includes(value)) {
+                            numberCounts[value]++;
+                        }
+                    }
+                });
+
+                // Find the letter with the highest count
+                let highestLetter = 'N/A';
+                let maxLetterCount = -1;
+                for (const letter in letterCounts) {
+                    if (letterCounts[letter] > maxLetterCount) {
+                        maxLetterCount = letterCounts[letter];
+                        highestLetter = letter;
+                    }
+                }
+
+                // Find the number with the highest count
+                let highestNumber = 'N/A';
+                let maxNumberCount = -1;
+                for (const number in numberCounts) {
+                    if (numberCounts[number] > maxNumberCount) {
+                        maxNumberCount = numberCounts[number];
+                        highestNumber = number;
+                    }
+                }
+
+                // Update the display for highest letter and number
+                highestLetterSpan.textContent = highestLetter;
+                highestNumberSpan.textContent = highestNumber;
+
+                let style = 'Fill out the questionnaire to see your style!';
+                let posX = 0; // Horizontal position for indicator (percentage)
+                let posY = 0; // Vertical position for indicator (percentage)
+
+                // Determine the social style and indicator position only if both highest letter and number are determined
+                if (highestLetter !== 'N/A' && highestNumber !== 'N/A' && maxLetterCount > 0 && maxNumberCount > 0) {
+                    // Map letter to a numerical index for position calculation
+                    // Since the HTML now has A, B, C, D visually from left to right for verbal scale:
+                    // 'A' -> 0, 'B' -> 1, 'C' -> 2, 'D' -> 3
+                    const letterIndex = ['A', 'B', 'C', 'D'].indexOf(highestLetter);
+                    // Convert number string to integer and adjust to 0-indexed
+                    // '1' -> 0, '2' -> 1, '3' -> 2, '4' -> 3
+                    const numberIndex = parseInt(highestNumber, 10) - 1;
+
+                    // Determine the social style based on the matrix logic with the new letter mapping
+                    // Analytical: A, B (letterIndex 0, 1) and 1, 2 (numberIndex 0, 1)
+                    if (letterIndex <= 1 && numberIndex <= 1) {
+                        style = 'Analytical';
+                    }
+                    // Driver: C, D (letterIndex 2, 3) and 1, 2 (numberIndex 0, 1)
+                    else if (letterIndex >= 2 && numberIndex <= 1) {
+                        style = 'Driver';
+                    }
+                    // Amiable: A, B (letterIndex 0, 1) and 3, 4 (numberIndex 2, 3)
+                    else if (letterIndex <= 1 && numberIndex >= 2) {
+                        style = 'Amiable';
+                    }
+                    // Expressive: C, D (letterIndex 2, 3) and 3, 4 (numberIndex 2, 3)
+                    else if (letterIndex >= 2 && numberIndex >= 2) {
+                        style = 'Expressive';
+                    }
+
+                    // Calculate indicator position in percentages
+                    // Each letter/number range occupies 25% of the axis.
+                    // The center of each range is at (index * 25) + 12.5%
+                    posX = (letterIndex * 25) + 12.5;
+                    posY = (numberIndex * 25) + 12.5;
+
+                    // Set indicator position and make it visible
+                    indicator.style.left = `${posX}%`;
+                    indicator.style.top = `${posY}%`;
+                    indicator.style.display = 'block';
+                } else {
+                    // Hide indicator if not enough information to determine style
+                    indicator.style.display = 'none';
+                }
+
+                // Update the displayed social style
+                yourStyleSpan.textContent = style;
+            }
+
+            // Attach event listeners to all radio buttons
+            // Any change in selection will trigger the style recalculation
+            allRadioButtons.forEach(input => {
+                input.addEventListener('change', calculateStyle);
+            });
+
+            // Initial calculation on page load to set default state (e.g., "N/A", hidden indicator)
+            calculateStyle();
+        });
+    </script>
+</body>
+</html>
